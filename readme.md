@@ -2,6 +2,8 @@
 
 
 
+## 基础命令及数据结构
+
 Redis:通用命令：
 
 - 通用指令是部分数据类型的，都可以使用的指令，常见的有：
@@ -137,4 +139,195 @@ Redis中的List类型与java中的LinkedList类似，可以看做是一个双向
 如何利用Lst结构模拟一个阻塞队列？
 ·入口和出口在不同边
 出队时采用BLPOP或BRPOP
+
+
+
+#### Set类型
+
+Redis的Set结构与Java中的HashSet类似，可以看做是一个value为nul1的HashMap。因为也是一个hash表，因此具备与
+HashSet类似的特征：
+
+- 无序
+- 元素不可重复
+- 查找快
+- 支持交集、并集、差集等功能
+
+Set类型的常见命令
+
+SADD key member.,:向set中添加一个或多个元素
+
+SREM key member..:移除set中的指定元素
+
+SCARD key:返回set中元素的个数
+
+SISMEMBER key member:判断一个元素是否存在于set中
+
+SMEMBERS:获取set中的所有元素
+
+SINTER key1key2...:求keyl与key2的交集
+
+SDIFF key1key2..:求keyl与key2的差集
+
+SUNION key1 key2..:求key1和key2的并集
+
+
+
+#### SortedSet类型
+
+Redis的SortedSet:是一个可排序的set集合，与Java中的TreeSet有些类似，但底层数据结构却差别很大。SortedSet中
+的每一个元素都带有一个score属性，可以基于scorel属性对元素排序，底层的实现是一个跳表(SkipList)加hash表
+SortedSet具备下列特性：
+可排序
+元素不重复
+查询速度快
+因为SortedSet的可排序特性，经常被用来实现排行榜这样的功能。
+
+
+
+SortedSet类型的常见命令
+
+- SortedSet的常见命令有：
+- ZADD key score member:添加一个或多个元素到sorted set,如果已经存在则更新其score值
+- ZREM key member:册别除sorted set中的一个指定元素
+- ZSC0 RE key member:获取sorted set中的指定元素的score值
+- ZRANK key member:获取sorted set中的指定元素的排名
+- ZCARD key:获取sorted set中的元素个数
+- ZCOUNT key min max:统计score值在给定范围内的所有元素的个数
+- ZINCRBY key increment member:让sorted set中的指定元素自增，步长为指定的increment值
+- ZRANGE key min max:按照score排序后，获取指定排名范围内的元素
+- ZRANGEBYSCORE key min max:按照score?排序后，获取指定score范围内的元素
+- ZDIFF、ZINTER、ZUNION:求差集、交集、并集
+- 注意：所有的排名默认都是升序，如果要降序则在命令的Z后面添加EV即可
+
+
+
+## Jedis与springdataredis
+
+
+
+### jedis的使用
+
+
+
+jedis其实是线程不安全的，所以我们在使用时通常与连接池一起使用
+
+
+
+1.引入依赖
+
+```
+<dependency>
+    <groupId>redis.clients</groupId>
+    <artifactId>jedis</artifactId>
+    <version>3.7.0</version>
+</dependency>
+```
+
+2.创建jedis连接池工厂
+
+```
+public class JedisConnectionFactory {
+
+    private static final JedisPool jedisPool;
+
+    static {
+        //配置连接池
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(8); //连接池允许的jedis的最大连接数
+        poolConfig.setMaxIdle(8);//连接池允许的jedis的最大空连接数，不大于setMaxTotal
+        poolConfig.setMinIdle(8);//空连接的可用数
+        poolConfig.setMaxWaitMillis(1000);//连接请求的最大等待时间
+        //创建连接池对象
+        jedisPool = new JedisPool(poolConfig,
+                "192.168.32.131",6379,1000);
+
+    }
+    public static Jedis getJedis(){
+        return jedisPool.getResource();
+    }
+}
+```
+
+3.测试jedis的使用
+
+```
+public class JedisTest {
+
+    private Jedis jedis;
+
+    @BeforeEach
+    void setUp(){
+        //1.建立链接
+//        jedis = new Jedis("192.168.32.131",6379);
+        jedis = JedisConnectionFactory.getJedis();
+        //2.选择库
+        jedis.select(0);
+    }
+
+    @Test
+    void testString(){
+
+        //1.存入数据
+        String result = jedis.set("name","guojunzhang");
+        System.out.println("result = "+ result);
+        //2.获取数据
+        String name = jedis.get("name");
+        System.out.println("name = " + name);
+    }
+    @Test
+    void testHash(){
+        //1.插入hash数据
+        jedis.hset("user:1","name","Jack");
+        jedis.hset("user:1","age","21");
+        HashMap<String,String> hashMap = new HashMap<>();
+        hashMap.put("name","guojunzhang");
+        hashMap.put("age","22");
+        hashMap.put("address","四川内江");
+        jedis.hmset("usermap:1",hashMap);
+        //2.获取hash数据
+        Map<String,String> map = jedis.hgetAll("user:1");
+        System.out.println(map);
+        System.out.println("-------------------------");
+        Map<String,String> hm = jedis.hgetAll("usermap:1");
+        System.out.println(hm);
+        List<String> list = hm.entrySet()
+                .stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.toList());
+        System.out.println(list);
+        System.out.println(list.get(0));
+        System.out.println(list.get(1));
+    }
+    @AfterEach
+    void testDown(){
+        if (jedis != null){
+            jedis.close();
+        }
+    }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

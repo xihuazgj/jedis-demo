@@ -1,7 +1,7 @@
 package com.zgj.test;
 
 
-import jdk.nashorn.internal.parser.JSONParser;
+import com.zgj.jedis.util.JedisConnectionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,8 @@ public class JedisTest {
     @BeforeEach
     void setUp(){
         //1.建立链接
-        jedis = new Jedis("192.168.32.131",6379);
+//        jedis = new Jedis("192.168.32.131",6379);
+        jedis = JedisConnectionFactory.getJedis();
         //2.选择库
         jedis.select(0);
     }
